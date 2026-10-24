@@ -4,8 +4,11 @@ from app.schemas.response import SuccessResponse
 router = APIRouter()
 
 @router.get(
-    "/",
+    "/health",
     response_model=SuccessResponse
 )
 async def health_check():
-    return SuccessResponse(message="API is healthy")
+    return SuccessResponse[dict](
+        success=True,
+        data={"status": "ok"}
+    )
