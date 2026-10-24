@@ -24,3 +24,9 @@ def unwrap_key(wrapped: bytes, master_key: bytes | None = None) -> bytes:
         return aesgcm.decrypt(nonce, ciphertext, None)
     except InvalidTag:
         raise IntegrityError("Gagal membuka kunci: master key salah atau data kunci telah dimanipulasi")
+
+def rewrap_value(wrapped: bytes | None, old_key: bytes, new_key: bytes) -> bytes | None:
+    if not wrapped:
+        return None
+    raw_secret = unwrap_key(wrapped, master_key=old_key)
+    return wrap_key(raw_secret, master_key=new_key)
