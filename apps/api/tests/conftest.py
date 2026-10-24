@@ -22,6 +22,50 @@ def db_engine():
     engine.dispose()
 
 
+@pytest.fixture
+def db_session(db_engine):
+    """Session whose outer transaction is always rolled back, so nothing is persisted.
+
+    ``join_transaction_mode="create_savepoint"`` lets the application call
+    ``commit()`` / ``rollback()`` (as the auth routers do) without ending the
+    surrounding test transaction.
+    """
+    from sqlalchemy.orm import Session
+
+    connection = db_engine.connect()
+    outer = connection.begin()
+    session = Session(
+        bind=connection,
+        autoflush=False,
+        join_transaction_mode="create_savepoint",
+    )
+    try:
+        yield session
+    finally:
+        session.close()
+        outer.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def client(db_session):
+    """FastAPI TestClient whose ``get_db`` dependency uses the rollback session."""
+    from fastapi.testclient import TestClient
+
+    from app.db.database import get_db
+    from main import app
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
 @pytest.fixture(scope="session")
 def db_conn(db_engine):
     """Read-only connection, everything runs inside a transaction that never commits."""
