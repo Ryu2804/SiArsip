@@ -3,4 +3,4 @@ from app.routers import health
 
 app = FastAPI()
 
-app.include_router(health.router)
+app.include_router(health.router, prefix="/health", tags=["Health"])

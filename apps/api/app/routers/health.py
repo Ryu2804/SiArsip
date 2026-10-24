@@ -1,7 +1,11 @@
 from fastapi import APIRouter
+from app.schemas.response import SuccessResponse
 
 router = APIRouter()
 
-@router.get("/health")
+@router.get(
+    "/",
+    response_model=SuccessResponse
+)
 async def health_check():
-    return {"status": "healthy"}
+    return SuccessResponse(message="API is healthy")
