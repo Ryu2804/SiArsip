@@ -1,0 +1,8 @@
+# CODEOWNERS
+# Sintaks: <pola_path> <@username_atau_tim>
+
+* @Ryu2804
+/apps/web/ @Ryu2804
+/apps/api/ @Ryu2804
+/bench/ @Ryu2804
+/docs/ @Ryu2804
