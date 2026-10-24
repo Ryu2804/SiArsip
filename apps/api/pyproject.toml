@@ -1,0 +1,16 @@
+[project]
+name = "siarsip-api"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "granian[reload]",
+    # ...the rest from your uv add (sqlalchemy, psycopg, minio, cryptography, ...)
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]

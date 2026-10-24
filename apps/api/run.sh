@@ -1,0 +1,1 @@
+uv run granian --interface asgi --reload main:app
