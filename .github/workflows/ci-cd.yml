@@ -10,6 +10,22 @@ jobs:
   test:
     name: Run Pytest
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -29,8 +45,9 @@ jobs:
       - name: Run Pytest
         working-directory: apps/api
         env:
-          # Dummy key 32 byte base64 biar config.py nggak crash pas test
           MASTER_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+          DATABASE_URL: "postgresql://testuser:testpassword@localhost:5432/testdb"
+          SECRET_KEY: "ci-secret-key-for-testing-only"
         run: pytest tests/ -v
 
   deploy:

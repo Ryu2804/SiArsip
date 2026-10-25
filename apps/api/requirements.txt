@@ -85,6 +85,8 @@ psycopg==3.3.6
     # via siarsip-api
 psycopg-binary==3.3.6 ; implementation_name != 'pypy'
     # via psycopg
+psycopg2-binary==2.9.13
+    # via siarsip-api
 pwdlib==0.3.1
     # via siarsip-api
 pycparser==3.12 ; implementation_name != 'PyPy'
