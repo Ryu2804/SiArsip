@@ -48,8 +48,9 @@ jobs:
           MASTER_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
           DATABASE_URL: "postgresql://testuser:testpassword@localhost:5432/testdb"
           SECRET_KEY: "ci-secret-key-for-testing-only"
-        run: pytest tests/ -v
-
+        run: |
+          alembic upgrade head
+          pytest tests/ -v
   deploy:
     name: Deploy to Vercel
     needs: test
