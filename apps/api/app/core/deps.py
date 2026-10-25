@@ -16,7 +16,6 @@ from app.schemas.errors.common_error import UnauthorizedError
 # auto_error=False so a missing header reaches us and is raised as UnauthorizedError
 _bearer = HTTPBearer(auto_error=False)
 
-
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),

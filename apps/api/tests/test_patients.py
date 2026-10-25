@@ -16,6 +16,7 @@ from app.core.security import hash_password
 from app.models.files import Files
 from app.models.patients import Patients
 from app.models.user import User
+from app.schemas.errors.common_error import StorageError
 from app.services import storage
 
 pytestmark = pytest.mark.usefixtures("client")
@@ -409,7 +410,7 @@ def test_delete_removes_files_and_calls_storage(
 
 def test_delete_succeeds_when_storage_fails(client, user_a, patient_of_a, monkeypatch):
     def boom(_keys):
-        raise storage.StorageError("bucket down")
+        raise StorageError("bucket down")
 
     monkeypatch.setattr(storage, "delete_objects", boom)
 

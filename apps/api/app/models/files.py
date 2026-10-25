@@ -18,6 +18,12 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+from app.models.enums import (
+    CipherAlgorithm,
+    FileCategory,
+    PDPClass,
+    _enum_values,
+)
 
 if TYPE_CHECKING:
     from app.models.patients import Patients
@@ -27,32 +33,14 @@ if TYPE_CHECKING:
 SHA256_BYTES = 32
 MAX_FILE_BYTES = 100 * 1024 * 1024
 
-
-def _enum_values(enum_cls: type[enum.Enum]) -> list[str]:
-    """Persist member *values* ("aes-gcm"), not names ("AES_GCM")."""
-    return [member.value for member in enum_cls]
-
-
-class FileCategory(enum.StrEnum):
-    """The four file data types from the PRD."""
-
-    IDENTITY_SCAN = "identity_scan"  # KTP, BPJS: JPG/PNG/PDF
-    OFFICE_DOCUMENT = "office_document"  # informed consent, referral: PDF/DOCX/XLSX
-    VIDEO = "video"  # wound care, USG: MP4
-    CLINICAL_IMAGE = "clinical_image"  # x-ray, wound photo: JPG/PNG (stego share)
-
-
-class PDPClass(enum.StrEnum):
-    """UU PDP Pasal 4: specific (health) vs general personal data."""
-
-    SPECIFIC = "specific"
-    GENERAL = "general"
-
-
-class CipherAlgorithm(enum.StrEnum):
-    AES_GCM = "aes-gcm"
-    DES_CBC = "des-cbc"
-    RC4 = "rc4"
+__all__ = [
+    "Files",
+    "FileCategory",
+    "PDPClass",
+    "CipherAlgorithm",
+    "SHA256_BYTES",
+    "MAX_FILE_BYTES",
+]
 
 
 class Files(Base):

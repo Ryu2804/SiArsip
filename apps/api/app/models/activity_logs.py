@@ -7,17 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
-from app.models.files import _enum_values
-
-
-class ActivityAction(enum.Enum):
-    UPLOAD = "upload"
-    DOWNLOAD = "download"
-    VIEW = "view"
-    UPDATE = "update"
-    DELETE = "delete"
-    LOGIN = "login"
-    LOGOUT = "logout"
+from app.models.enums import ActivityAction, _enum_values
 
 
 class ActivityLogs(Base):
