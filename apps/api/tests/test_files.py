@@ -8,8 +8,8 @@ import base64
 import hashlib
 import io
 import uuid
+import zipfile
 
-import numpy as np
 import pytest
 from PIL import Image
 from sqlalchemy import select
@@ -101,7 +101,39 @@ def png_bytes(size=(64, 64)) -> bytes:
 
 
 def pdf_bytes() -> bytes:
-    return b"%PDF-1.7\n%\xe2\xe3\xcf\xd3\n1 0 obj\n<<>>\nendobj\ntrailer\n%%EOF\n"
+    """A structurally complete PDF: header, catalog, xref, trailer, %%EOF."""
+    return (
+        b"%PDF-1.7\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [] >>\nendobj\n"
+        b"xref\n0 1\n0000000000 65535 f \n"
+        b"trailer\n<< /Root 1 0 R >>\nstartxref\n0\n%%EOF\n"
+    )
+
+
+def mp4_bytes() -> bytes:
+    """Minimal but structurally valid MP4: ftyp + moov(mvhd) + mdat."""
+    def box(kind: bytes, payload: bytes) -> bytes:
+        return (8 + len(payload)).to_bytes(4, "big") + kind + payload
+
+    return (
+        box(b"ftyp", b"isom\x00\x00\x02\x00")
+        + box(b"moov", box(b"mvhd", b"\x00" * 100))
+        + box(b"mdat", b"\x00" * 64)
+    )
+
+
+def docx_bytes(extra_part: tuple[str, bytes] | None = None) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("word/document.xml", "<w:document/>")
+        if extra_part:
+            archive.writestr(*extra_part)
+    return buffer.getvalue()
+
+
+EXE_PAYLOAD = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00" + b"\x00" * 200
 
 
 def upload(client, user, patient_id, content, category="clinical_image", cipher=None,
@@ -484,3 +516,68 @@ def test_failed_operations_log_nothing(client, bucket, db_session, alice, alice_
 
     db_session.expire_all()
     assert len(activity_rows(db_session, file_id)) == before
+
+
+# ---------------------------------------------------------------------------
+# [x] Executables rewritten as a document/image must be rejected
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("label", "payload", "category", "filename"),
+    [
+        ("pdf", b"%PDF-1.7\n" + EXE_PAYLOAD, "office_document", "laporan.pdf"),
+        ("jpeg", b"\xff\xd8\xff\xe0" + EXE_PAYLOAD, "clinical_image", "luka.jpg"),
+        ("png", b"\x89PNG\r\n\x1a\n" + EXE_PAYLOAD, "clinical_image", "luka.png"),
+        ("mp4", b"\x00\x00\x00\x18ftypisom" + EXE_PAYLOAD, "video", "rawat.mp4"),
+        ("docx", docx_bytes(("word/media/x.exe", EXE_PAYLOAD)), "office_document", "surat.docx"),
+    ],
+)
+def test_executable_disguised_as_media_is_415(
+    client, bucket, alice, alice_patient, label, payload, category, filename
+):
+    response = upload(
+        client, alice, alice_patient["id"], payload, category=category, filename=filename
+    )
+    assert response.status_code == 415, f"{label}: {response.text}"
+    assert response.json()["error"]["code"] == "unsupported_file_type"
+
+
+def test_exe_without_header_is_415(client, bucket, alice, alice_patient):
+    response = upload(client, alice, alice_patient["id"], EXE_PAYLOAD, filename="x.pdf")
+    assert response.status_code == 415
+
+
+@pytest.mark.parametrize(
+    ("label", "payload", "category"),
+    [
+        ("pdf_header_only", b"%PDF-1.7\n" + b"A" * 500, "office_document"),
+        ("jpeg_magic_only", b"\xff\xd8\xff" + b"A" * 500, "clinical_image"),
+        ("zip_not_docx", b"PK\x03\x04" + b"A" * 200, "office_document"),
+        ("mp4_without_moov", b"\x00\x00\x00\x18ftypisom" + b"\x00" * 64, "video"),
+    ],
+)
+def test_fake_media_is_415(client, bucket, alice, alice_patient, label, payload, category):
+    response = upload(client, alice, alice_patient["id"], payload, category=category)
+    assert response.status_code == 415, f"{label}: {response.text}"
+
+
+@pytest.mark.parametrize(
+    ("payload", "category", "filename"),
+    [
+        (docx_bytes(), "office_document", "surat.docx"),
+        (mp4_bytes(), "video", "rawat.mp4"),
+    ],
+)
+def test_real_media_still_accepted(
+    client, bucket, alice, alice_patient, payload, category, filename
+):
+    """Hardening must not reject genuine documents and videos."""
+    response = upload(
+        client, alice, alice_patient["id"], payload, category=category, filename=filename
+    )
+    assert response.status_code == 201, response.text
+
+    file_id = response.json()["data"]["id"]
+    download = client.get(f"/files/{file_id}/download", headers=_auth(alice))
+    assert download.content == payload

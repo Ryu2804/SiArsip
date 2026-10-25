@@ -27,7 +27,7 @@ from app.schemas.errors.common_error import (
     UnsupportedFileTypeError,
 )
 from app.schemas.file import CIPHER_ALGORITHM, FileResponse, FileUploadRequest
-from app.services import file_crypto, mime, storage
+from app.services import file_crypto, media_validation, mime, storage
 from app.services.crypto.envelope import unwrap_key, wrap_key
 
 logger = logging.getLogger(__name__)
@@ -153,10 +153,9 @@ async def upload(
 
     detected = mime.sniff_mime(content)
     allowed, pdp_class = CATEGORY_RULES[form.category]
-    if detected not in allowed:
-        raise UnsupportedFileTypeError(
-            form.category.value, detected, sorted(allowed)
-        )
+    # Magic bytes only look at the head; the file must also parse as real media
+    # (blocks executables renamed/grafted to look like a PDF, JPEG, PNG or MP4).
+    media_validation.validate(content, form.category.value, detected, allowed)
 
     algorithm = CIPHER_ALGORITHM[form.cipher]
     file_id = uuid4()
