@@ -19,10 +19,12 @@ def register_user_service(
 ) -> User:
     existing_user = user_repository.get_by_email(db, email)
     if existing_user:
+        db.rollback()
         raise EmailAlreadyRegisteredError(email)
 
     existing_user = user_repository.get_by_username(db, name)
     if existing_user:
+        db.rollback()
         raise UsernameAlreadyTakenError(name)
 
     new_user = User(

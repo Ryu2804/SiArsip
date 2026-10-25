@@ -17,13 +17,15 @@ def get_master_key() -> bytes:
     raw = os.getenv("MASTER_KEY")
     if not raw:
         raise RuntimeError("MASTER_KEY tidak ditemukan di environment variable")
-    
+
+    value = raw.strip()
+    value += "=" * (-len(value) % 4)
     try:
-        key = base64.b64decode(raw)
+        key = base64.b64decode(value.replace("-", "+").replace("_", "/"), validate=True)
     except Exception:
         raise RuntimeError("MASTER_KEY harus berupa string base64 yang valid")
-        
+
     if len(key) != 32:
         raise RuntimeError(f"MASTER_KEY harus tepat 32 byte (256-bit), terbaca {len(key)} byte")
-        
+
     return key

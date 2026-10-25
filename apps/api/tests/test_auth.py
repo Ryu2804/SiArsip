@@ -41,6 +41,11 @@ def _login(client, email: str, password: str):
     return client.post(LOGIN_URL, json={"email": email, "password": password})
 
 
+def _validation_fields(response) -> list[dict]:
+    """Per-field Pydantic errors from the API envelope (error.details.fields)."""
+    return response.json()["error"]["details"]["fields"]
+
+
 @pytest.fixture
 def registered_user(client):
     payload = {
@@ -215,7 +220,7 @@ def test_register_missing_required_field_returns_422(client, missing_field):
     response = _register(client, payload)
 
     assert response.status_code == 422
-    locations = [err["loc"] for err in response.json()["detail"]]
+    locations = [err["loc"] for err in _validation_fields(response)]
     assert any(missing_field in loc for loc in locations)
 
 
@@ -228,7 +233,7 @@ def test_register_invalid_email_returns_422(client, bad_email):
 
     assert response.status_code == 422
     assert any(
-        err["loc"][-1] == "email" for err in response.json()["detail"]
+        err["loc"][-1] == "email" for err in _validation_fields(response)
     )
 
 
@@ -241,7 +246,7 @@ def test_register_short_password_returns_422(client, short_password):
 
     assert response.status_code == 422
     assert any(
-        err["loc"][-1] == "password" for err in response.json()["detail"]
+        err["loc"][-1] == "password" for err in _validation_fields(response)
     )
 
 
@@ -252,7 +257,7 @@ def test_register_password_too_long_returns_422(client):
     )
 
     assert response.status_code == 422
-    assert any(err["loc"][-1] == "password" for err in response.json()["detail"])
+    assert any(err["loc"][-1] == "password" for err in _validation_fields(response))
 
 
 @pytest.mark.parametrize("bad_name", ["", " " * 3])
@@ -262,7 +267,7 @@ def test_register_empty_name_returns_422(client, bad_name):
     )
 
     assert response.status_code == 422
-    assert any(err["loc"][-1] == "name" for err in response.json()["detail"])
+    assert any(err["loc"][-1] == "name" for err in _validation_fields(response))
 
 
 def test_register_name_too_long_returns_422(client):
@@ -272,7 +277,7 @@ def test_register_name_too_long_returns_422(client):
     )
 
     assert response.status_code == 422
-    assert any(err["loc"][-1] == "name" for err in response.json()["detail"])
+    assert any(err["loc"][-1] == "name" for err in _validation_fields(response))
 
 
 # ---------------------------------------------------------------------------
@@ -373,7 +378,7 @@ def test_login_missing_required_field_returns_422(client, missing_field):
 
     assert response.status_code == 422
     assert any(
-        missing_field in err["loc"] for err in response.json()["detail"]
+        missing_field in err["loc"] for err in _validation_fields(response)
     )
 
 

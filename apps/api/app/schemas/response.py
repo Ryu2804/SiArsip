@@ -13,17 +13,11 @@ class Meta(BaseModel):
     total: int
 
 
-
-from typing import Any, Generic, TypeVar
-
-from pydantic import BaseModel, Field
-
-T = TypeVar("T")
-
-
 class SuccessResponse(BaseModel, Generic[T]):
     success: bool = True
-    data: T
+    message: str = "OK"
+    data: T | None = None
+    meta: Meta | None = None
 
 
 class ErrorDetail(BaseModel):

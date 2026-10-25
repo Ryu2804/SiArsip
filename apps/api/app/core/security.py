@@ -5,7 +5,15 @@ from datetime import datetime, timedelta
 
 password_hash = PasswordHash.recommended()
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+
+class TokenExpiredError(Exception):
+    """Token signature was valid but the token is past its expiry."""
+
+
+class InvalidTokenError(Exception):
+    """Token is missing, malformed, or has an invalid signature."""
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
@@ -25,9 +33,15 @@ def generate_jwt_token(user_id: str) -> str:
 
 def decode_jwt_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=str(ALGORITHM), options={"require": ["sub", "exp", "iat"]})
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[str(ALGORITHM)],
+            options={"require": ["user_id", "exp", "iat"]},
+        )
         return payload
     except jwt.ExpiredSignatureError:
-        raise Exception("Token has expired")
+        raise TokenExpiredError("Token has expired") from None
     except jwt.InvalidTokenError:
-        raise Exception("Invalid token")
+        raise InvalidTokenError("Invalid token") from None
+

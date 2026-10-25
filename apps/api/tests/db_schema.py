@@ -50,6 +50,7 @@ USERS = Table(
     primary_key="id",
     columns={
         "id": Column(UUID),
+        "name": Column(VARCHAR, 255),
         "email": Column(VARCHAR, 320),
         "password_hash": Column(VARCHAR, 255),
         "stego_key_wrapped?": Column(BYTEA, nullable=True),

@@ -228,8 +228,8 @@ def insert_user(conn, email="a@example.com"):
     return conn.execute(
         text(
             """
-            INSERT INTO users (id, email, password_hash, created_at)
-            VALUES (gen_random_uuid(), :email, 'x', now())
+            INSERT INTO users (id, name, email, password_hash, created_at)
+            VALUES (gen_random_uuid(), 'Test User', :email, 'x', now())
             RETURNING id
             """
         ),
@@ -297,8 +297,8 @@ class TestConstraintsRejectBadData:
         return conn.execute(
             text(
                 """
-                INSERT INTO users (id, email, password_hash, created_at)
-                VALUES (gen_random_uuid(), :email, 'x', now())
+                INSERT INTO users (id, name, email, password_hash, created_at)
+                VALUES (gen_random_uuid(), 'Test User', :email, 'x', now())
                 RETURNING id
                 """
             ),
