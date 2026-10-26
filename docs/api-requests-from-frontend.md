@@ -20,3 +20,6 @@ saran dari frontend, bukan spesifikasi yang sudah disepakati.
 
 - Error pasien memakai `error_code`, error lain memakai `code`. Frontend mengerti keduanya
   untuk saat ini, tetapi seragam lebih baik.
+- Issue #43 menyebut respons reveal berisi `file_id` dan file bukan PNG ditolak. Backend
+  mengembalikan `patient_id` (bukan `file_id`) dan menerima PNG maupun JPEG. Frontend mengikuti
+  backend: hasil ditautkan ke data pasien, dan JPEG ikut diterima.
