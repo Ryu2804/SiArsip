@@ -1,33 +1,22 @@
-# Permintaan endpoint dari frontend
+# Status endpoint untuk frontend
 
-Endpoint yang dibutuhkan frontend tetapi belum ada di `apps/api`. Bentuk respons
-mengikuti envelope yang sudah dipakai (`{success, message, data, meta}`).
+Daftar kebutuhan endpoint dari sisi frontend. Bagian yang berstatus "USULAN" adalah
+saran dari frontend, bukan spesifikasi yang sudah disepakati.
 
-## 1. Daftar file pasien (blocker SIA-111 / #40, juga SIA-125 / #44)
+## Sudah ada dan dipakai frontend
 
-`GET /patients/{patient_id}/files`
+- `GET /patients/{patient_id}/files?page&size&category`: daftar file pasien (SIA-111).
+- `GET /logs?page&size&action&date_from&date_to`: log aktivitas milik pengguna (SIA-134).
+- `GET /files/{id}/download` dan `POST /files/{id}/share-image`: unduh dan unduh untuk konsultasi.
 
-- Auth: Bearer token, sama seperti `GET /files/{file_id}`.
-- Query: `page` (default 1), `size` (default 20, maks 100), `category` (opsional).
-- Urutan: `created_at` menurun.
-- `data`: list `FileResponse` (skema yang sama dengan upload / `GET /files/{id}`).
-  Field yang dipakai UI: `id`, `original_name`, `category`, `pdp_class`, `mime_type`,
-  `size_bytes`, `algorithm`, `shareable`, `created_at`.
-- `meta`: `{page, size, total}` seperti `GET /patients`.
-- Jangan sertakan konten file atau path penyimpanan.
-- Pasien tidak ada: 404 dengan `error.code` yang sama seperti endpoint pasien lain.
+## Belum ada
 
-## 2. Endpoint lain yang masih ditunggu
-
-Frontend sudah menyiapkan kerangka halamannya; kontrak belum ada.
-
-| Isu | Kebutuhan | Catatan |
+| Isu | Kebutuhan | Status |
 | --- | --- | --- |
-| SIA-122 / #43 | Ungkap identitas (reveal) | Perlu keputusan: apa yang dikembalikan dan apakah dicatat di log. |
-| SIA-107 / #39 | Log aktivitas | Usul: `GET /logs?page&size&action&from&to`, tanpa data identitas pasien di payload. |
-| SIA-131 / #46 | Benchmark cipher | Usul: hasil per cipher (`algorithm`, `size_bytes`, `encrypt_ms`, `decrypt_ms`) agar bisa digrafikkan. |
+| SIA-122 / #43 | `POST /stego/reveal` (menerima PNG, mengembalikan identitas bila milik pengguna) | Disebut di issue #43; bentuk respons belum ada. |
+| SIA-131 / #46 | Hasil benchmark cipher | USULAN: per cipher `algorithm`, `size_bytes`, `encrypt_ms`, `decrypt_ms` agar bisa digrafikkan. |
 
-## 3. Catatan kecil
+## Catatan kecil
 
 - Error pasien memakai `error_code`, error lain memakai `code`. Frontend mengerti keduanya
   untuk saat ini, tetapi seragam lebih baik.
