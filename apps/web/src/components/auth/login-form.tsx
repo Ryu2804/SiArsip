@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { TextField } from "@/components/auth/text-field";
+import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { login } from "@/lib/api/auth";
 import { ApiError, friendlyMessage } from "@/lib/api/errors";

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import { TextField } from "@/components/auth/text-field";
+import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { register as registerUser } from "@/lib/api/auth";
 import { ApiError, friendlyMessage } from "@/lib/api/errors";
