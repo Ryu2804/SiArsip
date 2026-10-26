@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { UploadDialog } from "@/components/files/upload-dialog";
 import { PatientFormDialog } from "@/components/patients/patient-form-dialog";
 import { Button } from "@/components/ui/button";
 import { ApiError, friendlyMessage } from "@/lib/api/errors";
@@ -17,6 +18,7 @@ export function PatientDetail({ id }: { id: string }) {
   const remove = useDeletePatient(id);
 
   const [editing, setEditing] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [showNik, setShowNik] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -155,12 +157,17 @@ export function PatientDetail({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">File</h2>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">File</h2>
+          <Button onClick={() => setUploadOpen(true)}>+ Unggah file</Button>
+        </div>
         <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
-          Unggah dan daftar file pasien akan hadir di SIA-76 dan SIA-111.
+          Daftar file pasien akan hadir di SIA-111.
         </div>
       </div>
+
+      <UploadDialog patientId={id} open={uploadOpen} onOpenChange={setUploadOpen} />
 
       <PatientFormDialog open={editing} onOpenChange={setEditing} patient={patient} onSaved={() => toast.success("Data pasien diperbarui.")} />
     </section>

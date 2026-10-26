@@ -43,26 +43,31 @@ export function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Turn a non-2xx response into an ApiError, whatever shape the body has. */
-async function toApiError(response: Response): Promise<ApiError> {
+/** Build an ApiError from a non-2xx body, whatever shape (or text) it has. */
+export function parseApiError(
+  status: number,
+  statusText: string,
+  bodyText: string,
+): ApiError {
   try {
-    const body = (await response.json()) as Partial<ApiErrorBody>;
+    const body = JSON.parse(bodyText) as Partial<ApiErrorBody>;
     if (body.error) {
-      return new ApiError(
-        response.status,
-        body.error.code,
-        body.error.message,
-        body.error.details,
-      );
+      return new ApiError(status, body.error.code, body.error.message, body.error.details);
     }
   } catch {
     // Not JSON (proxy error page, empty body): fall through.
   }
-  return new ApiError(
-    response.status,
-    "http_error",
-    response.statusText || `HTTP ${response.status}`,
-  );
+  return new ApiError(status, "http_error", statusText || `HTTP ${status}`);
+}
+
+/** Drop the session and send the user to /login. Call on any authenticated 401. */
+export function reportUnauthorized(): void {
+  clearToken();
+  onUnauthorized();
+}
+
+async function toApiError(response: Response): Promise<ApiError> {
+  return parseApiError(response.status, response.statusText, await response.text());
 }
 
 /** Perform a request and return the full `{ data, meta }` envelope. */
@@ -100,10 +105,7 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const error = await toApiError(response);
-    if (response.status === 401 && auth) {
-      clearToken();
-      onUnauthorized();
-    }
+    if (response.status === 401 && auth) reportUnauthorized();
     throw error;
   }
 
