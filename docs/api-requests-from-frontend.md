@@ -14,7 +14,7 @@ saran dari frontend, bukan spesifikasi yang sudah disepakati.
 | Isu | Kebutuhan | Status |
 | --- | --- | --- |
 | SIA-122 / #43 | `POST /stego/reveal` (menerima PNG/JPEG, mengembalikan identitas bila milik pengguna) | Sudah ada: multipart `file`, membalas `patient_id`, `name`, `mrn`, `birth_date`, `diagnosis`. Galat dekripsi: 422 `reveal_failed`. |
-| SIA-131 / #46 | Hasil benchmark cipher | USULAN: per cipher `algorithm`, `size_bytes`, `encrypt_ms`, `decrypt_ms` agar bisa digrafikkan. |
+| SIA-131 / #46 | Hasil benchmark cipher | Sudah ada: `POST /benchmark/run` (auth), body opsional `size_bytes` (1 KiB–10 MiB) dan `iterations` (1–10). Per cipher: `algorithm`, `size_bytes`, `iterations`, `encrypt_ms`, `decrypt_ms`, total, throughput, overhead, `verified`, `tamper_detected`. |
 
 ## Catatan kecil
 

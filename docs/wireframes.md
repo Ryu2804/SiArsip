@@ -165,7 +165,7 @@ Rute `/reveal`. API: `POST /stego/reveal` (SIA-122, sudah ada di backend).
 
 ## 6. Benchmark
 
-Rute `/benchmark`. API: endpoint benchmark (SIA-131, belum ada di backend).
+Rute `/benchmark`. API: `POST /benchmark/run` (SIA-131, sudah ada di backend).
 
 ```
  Benchmark cipher                              [ Jalankan ]

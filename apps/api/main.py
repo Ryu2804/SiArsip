@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import app.models
 from app.core.handlers import register_exception_handlers
 from app.core.middleware import request_logging_middleware
-from app.routers import auth, files, health, logs, patients, stego
+from app.routers import auth, benchmark, files, health, logs, patients, stego
 
 app = FastAPI()
 
@@ -16,6 +16,7 @@ app.include_router(patients.router)
 app.include_router(files.router)
 app.include_router(logs.router)
 app.include_router(stego.router)
+app.include_router(benchmark.router)
 
 app.middleware("http")(request_logging_middleware)
 
