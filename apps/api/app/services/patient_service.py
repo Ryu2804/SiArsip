@@ -154,6 +154,10 @@ def delete(db: Session, user: User, patient_id: UUID) -> PatientDeleteResponse:
         db.scalars(select(Files.storage_key).where(Files.patient_id == patient.id))
     )
 
+    # A single DELETE FROM patients is enough: files cascade (patient_id ON DELETE
+    # CASCADE) and activity_logs.file_id goes NULL (ON DELETE SET NULL). The ORM must
+    # not cascade the files itself, or it would unset activity_logs.file_id -- which
+    # points at files before those rows are even deleted -- and trip the FK.
     patient_repository.delete(db, patient)
     # Commit first: a rolled-back transaction must not leave objects already removed.
     db.commit()

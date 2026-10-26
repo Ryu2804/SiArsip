@@ -454,3 +454,51 @@ def test_ciphertext_copied_across_users_fails(client, db_session, user_a, user_b
     response = client.get(f"{PATIENTS_URL}/{from_b['id']}", headers=_auth(user_b))
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "integrity_failed"
+
+def test_delete_cascades_files_with_activity_logs(
+    client, db_session, user_a, patient_of_a, monkeypatch
+):
+    """A file that has activity_logs rows must not block the patient delete.
+
+    Regression: the FK was plain, so Postgres raised ForeignKeyViolation
+    (fk_activity_logs_file_id) on DELETE /patients/{id}.
+    """
+    from app.models.activity_logs import ActivityLogs
+    from app.models.enums import ActivityAction
+
+    monkeypatch.setattr(storage, "delete_objects", lambda _keys: None)
+
+    file_id = uuid.uuid4()
+    db_session.add(
+        Files(
+            id=file_id,
+            owner_id=user_a.id,
+            patient_id=uuid.UUID(patient_of_a["id"]),
+            category="identity_scan",
+            pdp_class="specific",
+            mime_type="application/pdf",
+            size_bytes=10,
+            original_name_encrypted=b"n",
+            sha256_plain=b"0" * 32,
+            algorithm="aes-gcm",
+            format_version=1,
+            iv=b"i" * 12,
+            auth_tag=b"t" * 16,
+            dek_wrapped=b"dek",
+            storage_key="archives/logged.bin",
+        )
+    )
+    db_session.add(
+        ActivityLogs(user_id=user_a.id, action=ActivityAction.UPLOAD, file_id=file_id)
+    )
+    db_session.commit()
+
+    response = client.delete(f"{PATIENTS_URL}/{patient_of_a['id']}", headers=_auth(user_a))
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"id": patient_of_a["id"], "deleted_files": 1}
+
+    db_session.expire_all()
+    log = db_session.scalar(select(ActivityLogs).where(ActivityLogs.user_id == user_a.id))
+    assert log is not None           # the audit entry survives...
+    assert log.file_id is None       # ...with only its file reference cleared

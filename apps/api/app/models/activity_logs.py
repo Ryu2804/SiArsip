@@ -33,9 +33,11 @@ class ActivityLogs(Base):
     )
 
     # Nullable: not every action concerns a file.
+    # SET NULL: deleting a file (e.g. via a patient cascade) must not be blocked by
+    # the audit trail; the log entry stays, only the reference is dropped.
     file_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("files.id"),
+        ForeignKey("files.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
