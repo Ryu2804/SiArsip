@@ -92,3 +92,24 @@ def download_file(
             **DOWNLOAD_HEADERS,
         },
     )
+
+
+@router.post("/files/{file_id}/share-image", response_class=Response)
+def share_image(
+    file_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    data, kind = file_service.share_image(db, user, file_id)
+
+    media_type = "image/jpeg" if kind == "jpg" else "image/png"
+    filename = f"shared_{file_id}.{kind}"  # no patient data in filenames
+
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            **DOWNLOAD_HEADERS,
+        },
+    )

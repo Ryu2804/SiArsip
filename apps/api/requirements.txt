@@ -59,6 +59,8 @@ idna==3.20
     #   httpx
 iniconfig==2.3.1
     # via pytest
+jpeglib==1.0.2
+    # via siarsip-api
 mako==1.4.3
     # via alembic
 markupsafe==3.0.4
@@ -66,13 +68,19 @@ markupsafe==3.0.4
 minio==7.2.20
     # via siarsip-api
 numpy==2.4.6 ; python_full_version < '3.12'
-    # via siarsip-api
+    # via
+    #   jpeglib
+    #   siarsip-api
 numpy==2.5.4 ; python_full_version >= '3.12'
-    # via siarsip-api
+    # via
+    #   jpeglib
+    #   siarsip-api
 opentelemetry-api==1.45.1
     # via fastapi
 packaging==26.3
-    # via pytest
+    # via
+    #   pytest
+    #   wheel
 passlib==1.7.4
     # via siarsip-api
 pillow==13.0.0
@@ -116,6 +124,8 @@ python-dotenv==1.2.4
 python-multipart==0.0.32
     # via siarsip-api
 ruff==0.17.2
+setuptools==84.2.1
+    # via jpeglib
 sqlalchemy==2.1.6
     # via
     #   alembic
@@ -149,3 +159,5 @@ uvicorn==0.54.0
     # via siarsip-api
 watchfiles==1.3.0
     # via granian
+wheel==0.48.0
+    # via jpeglib

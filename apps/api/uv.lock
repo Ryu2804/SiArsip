@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -617,6 +617,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/01/e1/2069291243c926a2ff1cd706c7f3eeb9b62144bf60f77c9fb9ff2fb26bd3/iniconfig-2.3.1.tar.gz", hash = "sha256:67f4b9c50da0dedf52af349e7749a80a9057a5031199791b906c3bb3ae878960", size = 21209, upload-time = "2026-10-06T22:48:38.076Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/56/43/4ca9e49d27a1fcf6bece6f6aec0ea46bb9112489b93d4b688fb415457bdb/iniconfig-2.3.1-py3-none-any.whl", hash = "sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7", size = 7552, upload-time = "2026-10-06T22:48:36.959Z" },
+]
+
+[[package]]
+name = "jpeglib"
+version = "1.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "setuptools" },
+    { name = "wheel" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/99/d7/5cadeb5790320923e205e5d682acdc63740bf40973d6bf15f7625a149eb8/jpeglib-1.0.2.tar.gz", hash = "sha256:25eadd5497c94771c53deb6aa6646f0030ac24509fa9c3b89e984e11390bf3d9", size = 5671347, upload-time = "2025-09-18T16:45:49.463Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/bd/1e49f362ad057d237f27a5c4ef7bc35adc6e1928dab51dce3c565ad44d79/jpeglib-1.0.2-cp38-abi3-macosx_10_9_universal2.whl", hash = "sha256:fa065e7239664facd4a4c8910968ca729c75ad811aa36b23e3b8dba14d3163b2", size = 14453096, upload-time = "2025-09-18T16:45:34.228Z" },
+    { url = "https://files.pythonhosted.org/packages/33/54/d55db299c1572199847ef0707e1855e5a9f1d33abebc3148405c0760446d/jpeglib-1.0.2-cp38-abi3-macosx_10_9_x86_64.whl", hash = "sha256:7d160a4b0169e737fef2b3a8e58074ccb463425baf47725ff480818fd26dd4ff", size = 10690880, upload-time = "2025-09-18T16:45:36.643Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/9e/3e72638f1baf356edc683aad86c08034b5facdec912253be846dc0a60ccd/jpeglib-1.0.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:1e97ed4c232d0a76b80d823ac8a72ce0e8c68003929de599c27423dfdacf5e96", size = 10533860, upload-time = "2025-09-18T16:45:38.651Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/b5/d3f0560b0b420aa5dccac348598217be8691e6cdd5a5269c805b85fe2e36/jpeglib-1.0.2-cp38-abi3-manylinux2010_i686.manylinux2014_i686.manylinux_2_12_i686.manylinux_2_17_i686.whl", hash = "sha256:e03cc447815efaf4cf0c22333ec207a9a8a0b9245bd0bafd15b30c2156ed1290", size = 22136496, upload-time = "2025-09-18T16:45:40.962Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/f4/d7b8c2d3934208963fd2388cf4316043cb6c8e8c7d55780b8d9a45b4f8b2/jpeglib-1.0.2-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:feef6e94c34cf8b27f7a888c1c8567c34686c32b1e6edb16716931e4ee18fece", size = 22754356, upload-time = "2025-09-18T16:45:43.727Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/c5/7d9d2e594b897b6c24fae5dcdd345bbcd3098f65e26943a12cb48a5d687d/jpeglib-1.0.2-cp38-abi3-win32.whl", hash = "sha256:0b2d25da03f8710181367a4f1143215ad872c63b61dcad6665258b7ed051a5fb", size = 9394019, upload-time = "2025-09-18T16:45:45.942Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/5b/542403cdd0330733eeef421e4adc833d9862ed9b071f1607defe1f5cbe87/jpeglib-1.0.2-cp38-abi3-win_amd64.whl", hash = "sha256:abcc0be1c0b6adbff02b3b42805474fddbf6ac3182d619117a7e7c5cfa8f9bd2", size = 9852148, upload-time = "2025-09-18T16:45:47.928Z" },
 ]
 
 [[package]]
@@ -1514,6 +1535,15 @@ wheels = [
 ]
 
 [[package]]
+name = "setuptools"
+version = "84.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/b3/c19426f783614d625699a4b247faf628ea9ab1db228674491767b417f9e1/setuptools-84.2.1.tar.gz", hash = "sha256:3ff8b3b5492a0aa66960f4419365a86b84e013070d4313e4d4a6894f5d64d6bc", size = 1230289, upload-time = "2026-10-20T19:01:37.742Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ef/55/6dc6d6bb953bdfc52519a0059592c52b6e3b8ad51cf8256dffceb55b0610/setuptools-84.2.1-py3-none-any.whl", hash = "sha256:ca140b45d5325a9478f880e351484f62fef15f336462e449ca0c03c873d589c2", size = 876263, upload-time = "2026-10-20T19:01:35.678Z" },
+]
+
+[[package]]
 name = "siarsip-api"
 version = "0.1.0"
 source = { virtual = "." }
@@ -1524,6 +1554,7 @@ dependencies = [
     { name = "email-validator" },
     { name = "fastapi" },
     { name = "granian", extra = ["reload"] },
+    { name = "jpeglib" },
     { name = "minio" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -1556,6 +1587,7 @@ requires-dist = [
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.162.0" },
     { name = "granian", extras = ["reload"], specifier = ">=2.8.5" },
+    { name = "jpeglib", specifier = ">=1.0.2" },
     { name = "minio", specifier = ">=7.2" },
     { name = "numpy", specifier = ">=2.1" },
     { name = "passlib", specifier = ">=1.7.4" },
@@ -1767,4 +1799,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/92/cc/a3c3f557992a20a5bb24607f0da44d39cf6d6ba3f8f6ed7cb31f6c73371a/watchfiles-1.3.0-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:6398d250994baff581147ccba846223076fe6492ca93c0d1b3588fcf5355eb5c", size = 394852, upload-time = "2026-09-21T09:08:51.412Z" },
     { url = "https://files.pythonhosted.org/packages/55/65/d45763a5e1108a65af85a217af2930ebf1081c73fd8169d3f75e586992bb/watchfiles-1.3.0-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:591de392458bca26f6130fea4e667c06b657e873ad334ea06fad5a79f5086cef", size = 451789, upload-time = "2026-09-21T09:08:53.144Z" },
     { url = "https://files.pythonhosted.org/packages/02/96/165c6e540bf765ca1115062017adf861d0816525f02464ba71313fe7cf92/watchfiles-1.3.0-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5ec46a1ff4c1d81405a5fc645abdbff5e4e9388f7c9a6cdb392316a7c29b884f", size = 456919, upload-time = "2026-09-21T09:08:54.372Z" },
+]
+
+[[package]]
+name = "wheel"
+version = "0.48.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d0/20/50ed6bdf27dec98b568a8ae25dc599f35baa3d9709f9e83fd1edb56b9a90/wheel-0.48.0.tar.gz", hash = "sha256:94800765601e9171bf5d58d066e640662842bcedcbab982b2c90787a2c987322", size = 66471, upload-time = "2026-08-11T22:02:27.327Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/29/69cfbb602cd91690c55d38ba9fe53e6a7e76a6fa647bf38f19c138d25449/wheel-0.48.0-py3-none-any.whl", hash = "sha256:3217dcc807155e45db462d7ef2431f5ddda0d7273b700d05a67b271ceb1287ab", size = 33320, upload-time = "2026-08-11T22:02:26.1Z" },
 ]
