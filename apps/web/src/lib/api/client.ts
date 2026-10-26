@@ -6,12 +6,10 @@ const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 ).replace(/\/+$/, "");
 
-type JsonBody = Record<string, unknown> | unknown[];
-
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Plain objects are sent as JSON; FormData is sent as multipart. */
-  body?: JsonBody | FormData;
+  body?: object | FormData;
   query?: Record<string, string | number | boolean | null | undefined>;
   signal?: AbortSignal;
   /**
