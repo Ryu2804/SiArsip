@@ -1,7 +1,7 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { RevealView } from "@/components/stego/reveal-view";
 
 export const metadata = { title: "Ungkap identitas" };
 
 export default function Page() {
-  return <PagePlaceholder title="Ungkap identitas" ticket="SIA-125" />;
+  return <RevealView />;
 }

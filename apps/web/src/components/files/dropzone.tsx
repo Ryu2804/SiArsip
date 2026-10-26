@@ -10,10 +10,12 @@ interface DropzoneProps {
   disabled?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  /** Small print under the prompt. */
+  hint?: string;
 }
 
 /** Drag-and-drop target backed by a real file input, so keyboard users can pick too. */
-export function Dropzone({ onFile, accept, disabled, invalid, describedBy }: DropzoneProps) {
+export function Dropzone({ onFile, accept, disabled, invalid, describedBy, hint = "Maksimal 100 MB" }: DropzoneProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -58,7 +60,7 @@ export function Dropzone({ onFile, accept, disabled, invalid, describedBy }: Dro
         Tarik file ke sini, atau{" "}
         <span className="font-medium underline underline-offset-4">pilih file</span>
       </label>
-      <p className="text-muted-foreground text-xs">Maksimal 100 MB</p>
+      <p className="text-muted-foreground text-xs">{hint}</p>
     </div>
   );
 }

@@ -128,3 +128,44 @@ export interface ActivityLog {
   file_id: string | null;
   created_at: string;
 }
+
+// ---------- Stego reveal ----------
+
+export interface RevealedIdentity {
+  patient_id: string;
+  name: string;
+  mrn: string;
+  birth_date: string | null;
+  diagnosis: string | null;
+}
+
+// ---------- Benchmark ----------
+
+export interface BenchmarkRequest {
+  size_bytes: number;
+  iterations: number;
+}
+
+export interface CipherBenchmark {
+  algorithm: CipherAlgorithm;
+  size_bytes: number;
+  iterations: number;
+  /** Average per single operation. */
+  encrypt_ms: number;
+  decrypt_ms: number;
+  encrypt_total_ms: number;
+  decrypt_total_ms: number;
+  total_ms: number;
+  encrypt_mb_s: number;
+  decrypt_mb_s: number;
+  overhead_bytes: number;
+  overhead_percent: number;
+  verified: boolean;
+  tamper_detected: boolean;
+}
+
+export interface BenchmarkResult {
+  size_bytes: number;
+  iterations: number;
+  results: CipherBenchmark[];
+}
