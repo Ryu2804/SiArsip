@@ -1,5 +1,6 @@
 {
     "version": 2,
+    "buildCommand": "alembic upgrade head",
     "builds": [
         {
             "src": "main.py",
