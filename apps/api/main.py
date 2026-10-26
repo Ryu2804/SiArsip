@@ -3,6 +3,7 @@ from app.routers import auth, files, health, patients
 import app.models
 from app.core.handlers import register_exception_handlers
 from app.core.middleware import request_logging_middleware
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
@@ -14,3 +15,11 @@ app.include_router(patients.router)
 app.include_router(files.router)
 
 app.middleware("http")(request_logging_middleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://siarsip-fe.vercel.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
