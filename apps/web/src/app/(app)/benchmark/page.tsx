@@ -1,7 +1,7 @@
-import { PagePlaceholder } from "@/components/layout/page-placeholder";
+import { BenchmarkView } from "@/components/benchmark/benchmark-view";
 
 export const metadata = { title: "Benchmark" };
 
 export default function Page() {
-  return <PagePlaceholder title="Benchmark" ticket="SIA-136" />;
+  return <BenchmarkView />;
 }
