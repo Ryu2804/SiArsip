@@ -89,7 +89,7 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-56" aria-label="Filter kategori">
+            <SelectTrigger className="w-full sm:w-56" aria-label="Filter kategori">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

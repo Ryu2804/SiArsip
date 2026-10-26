@@ -84,7 +84,7 @@ export function PatientDetail({ id }: { id: string }) {
 
       <div className="flex flex-col gap-4 rounded-xl border p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">{patient.name}</h1>
+          <h1 className="min-w-0 text-2xl font-semibold tracking-tight break-words">{patient.name}</h1>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setEditing(true)}>
               Ubah
