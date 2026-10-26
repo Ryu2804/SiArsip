@@ -9,6 +9,7 @@ import hashlib
 import io
 import uuid
 import zipfile
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from PIL import Image
@@ -581,3 +582,78 @@ def test_real_media_still_accepted(
     file_id = response.json()["data"]["id"]
     download = client.get(f"/files/{file_id}/download", headers=_auth(alice))
     assert download.content == payload
+
+# ---------------------------------------------------------------------------
+# GET /patients/{id}/files: listing (SIA-111 / #40)
+# ---------------------------------------------------------------------------
+
+LIST_URL = "/patients/{patient_id}/files"
+
+def test_list_returns_uploaded_files(client, bucket, alice, alice_patient):
+    first = upload(client, alice, alice_patient["id"], jpeg_bytes()).json()["data"]
+    second = upload(client, alice, alice_patient["id"], png_bytes()).json()["data"]
+
+    response = client.get(LIST_URL.format(patient_id=alice_patient["id"]), headers=_auth(alice))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert {row["id"] for row in body["data"]} == {first["id"], second["id"]}
+    assert body["meta"] == {"page": 1, "size": 20, "total": 2}
+    # Same shape as GET /files/{id}; no storage path or content leaks out.
+    assert set(body["data"][0]) == set(first)
+
+def test_list_is_newest_first_and_paginated(client, bucket, db_session, alice, alice_patient):
+    ids = [
+        upload(client, alice, alice_patient["id"], jpeg_bytes()).json()["data"]["id"]
+        for _ in range(3)
+    ]
+    # now() is constant within this test's transaction; space them out explicitly.
+    base = datetime.now(timezone.utc)
+    for index, file_id in enumerate(ids):
+        db_session.get(Files, uuid.UUID(file_id)).created_at = base + timedelta(seconds=index)
+    db_session.commit()
+    url = LIST_URL.format(patient_id=alice_patient["id"])
+
+    page1 = client.get(url, params={"page": 1, "size": 2}, headers=_auth(alice)).json()
+    page2 = client.get(url, params={"page": 2, "size": 2}, headers=_auth(alice)).json()
+
+    assert [row["id"] for row in page1["data"]] == [ids[2], ids[1]]
+    assert [row["id"] for row in page2["data"]] == [ids[0]]
+    assert page1["meta"]["total"] == 3
+
+def test_list_filters_by_category(client, bucket, alice, alice_patient):
+    jpeg = upload(client, alice, alice_patient["id"], jpeg_bytes(), category="clinical_image")
+    pdf = upload(client, alice, alice_patient["id"], pdf_bytes(), category="office_document")
+
+    body = client.get(
+        LIST_URL.format(patient_id=alice_patient["id"]),
+        params={"category": "office_document"},
+        headers=_auth(alice),
+    ).json()
+
+    assert [row["id"] for row in body["data"]] == [pdf.json()["data"]["id"]]
+    assert body["meta"] == {"page": 1, "size": 20, "total": 1}
+    assert jpeg.status_code == 201
+
+def test_list_foreign_patient_is_404(client, bucket, alice, bob):
+    patient = _create(client, bob).json()["data"]
+    upload(client, bob, patient["id"], jpeg_bytes())
+
+    response = client.get(LIST_URL.format(patient_id=patient["id"]), headers=_auth(alice))
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+def test_list_unknown_patient_is_404(client, alice):
+    response = client.get(LIST_URL.format(patient_id=uuid.uuid4()), headers=_auth(alice))
+    assert response.status_code == 404
+
+def test_list_empty_patient(client, alice, alice_patient):
+    body = client.get(
+        LIST_URL.format(patient_id=alice_patient["id"]), headers=_auth(alice)
+    ).json()
+    assert body["data"] == []
+    assert body["meta"]["total"] == 0
+
+def test_list_requires_auth(client, alice_patient):
+    assert client.get(LIST_URL.format(patient_id=alice_patient["id"])).status_code == 401

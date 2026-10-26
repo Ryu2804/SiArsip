@@ -286,3 +286,27 @@ def share_image(db: Session, user: User, file_id: UUID) -> tuple[bytes, str]:
     db.commit()
  
     return result, kind
+
+def list_page(
+    db: Session,
+    user: User,
+    patient_id: UUID,
+    page: int,
+    size: int,
+    category: FileCategory | None = None,
+) -> tuple[list[FileResponse], int]:
+    """Files of one patient, newest first. Metadata only: no object storage call."""
+    patient = _owned_patient(db, user, patient_id)  # 404 for a foreign id, same as elsewhere
+
+    total = file_repository.count_for_patient(
+        db, patient.id, user.id, category=category
+    )
+    rows = file_repository.list_for_patient(
+        db,
+        patient.id,
+        user.id,
+        category=category,
+        limit=size,
+        offset=(page - 1) * size,
+    )
+    return [_as_response(row) for row in rows], total

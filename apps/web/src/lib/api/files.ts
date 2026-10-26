@@ -1,11 +1,18 @@
 import {
+  apiRequest,
   authHeaders,
   buildUrl,
   parseApiError,
   reportUnauthorized,
 } from "./client";
 import { ApiError } from "./errors";
-import type { ApiSuccess, CipherChoice, FileCategory, FileRecord } from "./types";
+import type {
+  ApiSuccess,
+  CipherChoice,
+  FileCategory,
+  FileRecord,
+  Meta,
+} from "./types";
 
 export interface UploadInput {
   file: File;
@@ -68,4 +75,25 @@ export function uploadFile(
     body.append("file", file, file.name);
     xhr.send(body);
   });
+}
+
+export interface PatientFilePage {
+  items: FileRecord[];
+  meta: Meta;
+}
+
+/** Files of one patient, newest first. Metadata only, no content. */
+export async function listPatientFiles(
+  patientId: string,
+  page: number,
+  size: number,
+  category?: FileCategory,
+  signal?: AbortSignal,
+): Promise<PatientFilePage> {
+  const envelope = await apiRequest<FileRecord[]>(
+    `/patients/${patientId}/files`,
+    { query: { page, size, category }, signal },
+  );
+  const items = envelope.data ?? [];
+  return { items, meta: envelope.meta ?? { page, size, total: items.length } };
 }

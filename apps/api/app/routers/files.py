@@ -1,16 +1,17 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
 from app.db.database import get_db
+from app.models.enums import FileCategory
 from app.models.user import User
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.file import FileResponse, FileUploadRequest
-from app.schemas.response import SuccessResponse, ok
+from app.schemas.response import Meta, SuccessResponse, ok
 from app.services import file_service
 
 router = APIRouter(tags=["Files"])
@@ -65,6 +66,18 @@ async def upload_file(
         message="File uploaded",
     )
 
+
+@router.get("/patients/{patient_id}/files", response_model=SuccessResponse[list[FileResponse]])
+def list_patient_files(
+    patient_id: UUID,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    category: FileCategory | None = Query(None, description="Only files of this category"),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    items, total = file_service.list_page(db, user, patient_id, page, size, category)
+    return ok(items, meta=Meta(page=page, size=size, total=total))
 
 @router.get("/files/{file_id}", response_model=SuccessResponse[FileResponse])
 def get_file(
