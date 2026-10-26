@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { FileList } from "@/components/files/file-list";
 import { UploadDialog } from "@/components/files/upload-dialog";
 import { PatientFormDialog } from "@/components/patients/patient-form-dialog";
 import { Button } from "@/components/ui/button";
@@ -157,15 +158,7 @@ export function PatientDetail({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">File</h2>
-          <Button onClick={() => setUploadOpen(true)}>+ Unggah file</Button>
-        </div>
-        <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
-          Daftar file pasien akan hadir di SIA-111.
-        </div>
-      </div>
+      <FileList patientId={id} onUpload={() => setUploadOpen(true)} />
 
       <UploadDialog patientId={id} open={uploadOpen} onOpenChange={setUploadOpen} />
 

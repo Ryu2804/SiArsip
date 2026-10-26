@@ -97,3 +97,33 @@ export async function listPatientFiles(
   const items = envelope.data ?? [];
   return { items, meta: envelope.meta ?? { page, size, total: items.length } };
 }
+
+async function fetchBlob(
+  path: string,
+  method: "GET" | "POST",
+  signal?: AbortSignal,
+): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path), { method, headers: authHeaders(), signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(0, "network_error", "Network request failed");
+  }
+  if (!response.ok) {
+    const error = parseApiError(response.status, response.statusText, await response.text());
+    if (response.status === 401) reportUnauthorized();
+    throw error;
+  }
+  return response.blob();
+}
+
+/** Decrypted file content. The Authorization header rules out a plain <a href>. */
+export function downloadFileBlob(fileId: string, signal?: AbortSignal): Promise<Blob> {
+  return fetchBlob(`/files/${fileId}/download`, "GET", signal);
+}
+
+/** Image prepared for sharing (clinical images only): no patient identity inside. */
+export function shareImageBlob(fileId: string, signal?: AbortSignal): Promise<Blob> {
+  return fetchBlob(`/files/${fileId}/share-image`, "POST", signal);
+}

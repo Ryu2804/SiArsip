@@ -109,3 +109,22 @@ export interface FileRecord {
   shareable: boolean;
   created_at: string;
 }
+
+// ---------- Activity log ----------
+
+export type ActivityAction =
+  | "upload"
+  | "download"
+  | "view"
+  | "update"
+  | "delete"
+  | "login"
+  | "logout"
+  | "share_image";
+
+export interface ActivityLog {
+  id: number;
+  action: ActivityAction;
+  file_id: string | null;
+  created_at: string;
+}
