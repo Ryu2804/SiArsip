@@ -58,6 +58,34 @@ class NotShareableError(AppError):
         super().__init__(messages.get(reason, "File is not shareable"), details={"reason": reason})
 
 
+class RevealError(AppError):
+    """Identity reveal failed: no payload, wrong owner key, or malformed payload."""
+
+    status_code = 422
+    code = "reveal_failed"
+
+    def __init__(self, reason: str) -> None:
+        messages = {
+            "no_data": "No hidden identity found in this image",
+            "decryption": "Failed to decrypt the embedded identity",
+            "malformed": "The embedded identity is malformed",
+        }
+        super().__init__(
+            messages.get(reason, "Failed to reveal identity"),
+            details={"reason": reason},
+        )
+
+
+class UnsupportedImageError(AppError):
+    """Reveal accepts only PNG and JPEG images."""
+
+    status_code = 415
+    code = "unsupported_image_type"
+
+    def __init__(self) -> None:
+        super().__init__("Only PNG and JPEG images can be revealed")
+
+
 class FileTooLargeError(AppError):
     status_code = 413
     code = "file_too_large"

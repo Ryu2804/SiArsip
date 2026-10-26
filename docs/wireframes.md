@@ -134,7 +134,7 @@ Dialog dari halaman detail pasien. API: `POST /patients/{id}/files` (multipart: 
 
 ## 5. Ungkap identitas
 
-Rute `/reveal`. API: endpoint ungkap identitas (SIA-122, belum ada di backend).
+Rute `/reveal`. API: `POST /stego/reveal` (SIA-122, sudah ada di backend).
 
 ```
  Ungkap identitas

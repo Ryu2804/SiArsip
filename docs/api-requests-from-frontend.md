@@ -9,11 +9,11 @@ saran dari frontend, bukan spesifikasi yang sudah disepakati.
 - `GET /logs?page&size&action&date_from&date_to`: log aktivitas milik pengguna (SIA-134).
 - `GET /files/{id}/download` dan `POST /files/{id}/share-image`: unduh dan unduh untuk konsultasi.
 
-## Belum ada
+## Status endpoint tambahan
 
 | Isu | Kebutuhan | Status |
 | --- | --- | --- |
-| SIA-122 / #43 | `POST /stego/reveal` (menerima PNG, mengembalikan identitas bila milik pengguna) | Disebut di issue #43; bentuk respons belum ada. |
+| SIA-122 / #43 | `POST /stego/reveal` (menerima PNG/JPEG, mengembalikan identitas bila milik pengguna) | Sudah ada: multipart `file`, membalas `patient_id`, `name`, `mrn`, `birth_date`, `diagnosis`. Galat dekripsi: 422 `reveal_failed`. |
 | SIA-131 / #46 | Hasil benchmark cipher | USULAN: per cipher `algorithm`, `size_bytes`, `encrypt_ms`, `decrypt_ms` agar bisa digrafikkan. |
 
 ## Catatan kecil

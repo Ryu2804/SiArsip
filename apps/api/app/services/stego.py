@@ -19,6 +19,18 @@ _SCRYPT_R = 8
 _SCRYPT_P = 1
 
 
+class StegoError(ValueError):
+    """Base class for steganography failures (kept as ValueError for compatibility)."""
+
+
+class NoHiddenDataError(StegoError):
+    """The image carries no readable payload header."""
+
+
+class DecryptionError(StegoError):
+    """A payload was found but could not be decrypted (wrong key or corruption)."""
+
+
 def detect_image_type(data: bytes) -> str | None:
     """Detect by magic bytes, not by filename or client-supplied content type."""
     if data.startswith(b"\xff\xd8\xff"):
@@ -50,9 +62,13 @@ def _decrypt(blob: bytes, password: str) -> bytes:
     block = algorithms.AES.block_size // 8
     body = len(blob) - SALT_LEN - IV_LEN
     if body < block or body % block:
-        raise ValueError("No valid hidden data (corrupted or not a stego image)")
+        raise NoHiddenDataError("No valid hidden data (corrupted or not a stego image)")
 
-    salt, iv, ciphertext = blob[:SALT_LEN], blob[SALT_LEN : SALT_LEN + IV_LEN], blob[SALT_LEN + IV_LEN :]
+    salt, iv, ciphertext = (
+        blob[:SALT_LEN],
+        blob[SALT_LEN : SALT_LEN + IV_LEN],
+        blob[SALT_LEN + IV_LEN :],
+    )
     dec = Cipher(algorithms.AES(_derive_key(password, salt)), modes.CBC(iv)).decryptor()
     padded = dec.update(ciphertext) + dec.finalize()
 
@@ -60,7 +76,7 @@ def _decrypt(blob: bytes, password: str) -> bytes:
         unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
         return unpadder.update(padded) + unpadder.finalize()
     except ValueError:
-        raise ValueError("Wrong password or corrupted data") from None
+        raise DecryptionError("Wrong password or corrupted data") from None
 
 
 # ---------- JPG ----------
@@ -103,10 +119,10 @@ def jpg_extract(src, password: str) -> bytes:
         return (np.abs(flat[idx[start : start + n]]) & 1).astype(np.uint8)
 
     if len(idx) < 32:
-        raise ValueError("No hidden data (image too small)")
+        raise NoHiddenDataError("No hidden data (image too small)")
     length = int.from_bytes(np.packbits(read_bits(0, 32)).tobytes(), "big")
     if 32 + length * 8 > len(idx):
-        raise ValueError("No hidden data (or corrupted length header)")
+        raise NoHiddenDataError("No hidden data (or corrupted length header)")
 
     blob = np.packbits(read_bits(32, length * 8)).tobytes()
     return _decrypt(blob, password)
@@ -135,7 +151,7 @@ def png_extract(src, password: str) -> bytes:
 
     length = int.from_bytes(np.packbits(flat[:32] & 1).tobytes(), "big")
     if 32 + length * 8 > flat.size:
-        raise ValueError("No hidden data (or corrupted length header)")
+        raise NoHiddenDataError("No hidden data (or corrupted length header)")
 
     blob = np.packbits(flat[32 : 32 + length * 8] & 1).tobytes()
     return _decrypt(blob, password)
@@ -160,3 +176,28 @@ def embed_jpg_bytes(data: bytes, message: bytes, password: str) -> bytes:
         jpg_embed(src, dst, message, password)
         with open(dst, "rb") as f:
             return f.read()
+
+
+def extract_png_bytes(data: bytes, password: str) -> bytes:
+    return png_extract(io.BytesIO(data), password)
+
+
+def extract_jpg_bytes(data: bytes, password: str) -> bytes:
+    # jpeglib needs real file paths, so use a temp directory
+    with tempfile.TemporaryDirectory() as tmp:
+        src = os.path.join(tmp, "in.jpg")
+
+        with open(src, "wb") as f:
+            f.write(data)
+
+        return jpg_extract(src, password)
+
+
+def extract_bytes(data: bytes, password: str) -> bytes:
+    """Read the hidden payload from a PNG/JPEG and decrypt it with `password`."""
+    kind = detect_image_type(data)
+    if kind == "png":
+        return extract_png_bytes(data, password)
+    if kind == "jpg":
+        return extract_jpg_bytes(data, password)
+    raise ValueError("Unsupported image type")
