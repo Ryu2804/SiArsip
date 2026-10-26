@@ -244,13 +244,17 @@ def share_image(db: Session, user: User, file_id: UUID) -> tuple[bytes, str]:
  
     if row.category != FileCategory.CLINICAL_IMAGE:
         raise NotShareableError("category")
- 
+
     # Ownership check + decryption of the patient's data in one call.
     patient = patient_service.get(db, user, row.patient_id)
  
     # Not download(): that would also write a DOWNLOAD entry to activity_logs.
     plaintext = decrypt_verified(row)
  
+    # Key material for the hidden identity: the id of the file's owner (the uploader).
+    # It never changes, so it survives password changes.
+    password = str(row.owner_id)
+
     kind = stego.detect_image_type(plaintext)
     if kind is None:
         raise NotShareableError("category")
@@ -268,9 +272,9 @@ def share_image(db: Session, user: User, file_id: UUID) -> tuple[bytes, str]:
  
     try:
         if kind == "jpg":
-            result = stego.embed_jpg_bytes(plaintext, message)
+            result = stego.embed_jpg_bytes(plaintext, message, password)
         else:
-            result = stego.embed_png_bytes(plaintext, message)
+            result = stego.embed_png_bytes(plaintext, message, password)
     except ValueError:
         # "Too big": the message does not fit in this image's capacity.
         raise NotShareableError("capacity") from None
