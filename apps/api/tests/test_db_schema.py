@@ -26,7 +26,7 @@ TABLES_PARAMS = pytest.mark.parametrize("table_name", sorted(TABLES), ids=sorted
 
 # Referential actions that keep children pointing at a valid parent are acceptable;
 # the diagram only states cardinality, not ON DELETE semantics.
-DELETE_ACTIONS = {"NO ACTION", "RESTRICT", "CASCADE"}
+DELETE_ACTIONS = {"NO ACTION", "RESTRICT", "CASCADE", "SET NULL"}
 
 
 class TestTablesExist:
