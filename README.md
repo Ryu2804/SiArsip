@@ -87,6 +87,7 @@ Empat kategori berkas dengan aturan MIME & klasifikasi PDP yang berbeda:
 - **Anti-penyamaran executable**: menolak berkas dengan signature `MZ`, `ELF`, Mach-O, atau shebang, termasuk *header grafting* (`%PDF-...MZ...`).
 - Batas ukuran unggah **100 MiB**, dibaca secara streaming per chunk.
 - Unduh respons menyertakan header `Content-Disposition` (RFC 5987 UTF-8), `Repr-Digest` (RFC 9530), dan `Cache-Control: no-store`.
+- **PIN opsional per berkas**: PIN 4–8 digit membungkus DEK (dan kunci MAC untuk DES-CBC/RC4) dengan **scrypt + AES-GCM** (format v2). PIN dikirim melalui header `X-File-PIN`, tidak pernah lewat URL; PIN yang hilang tidak dapat dipulihkan.
 
 ### Aktivitas (Audit Log)
 - Pencatatan otomatis `upload`, `download`, `share_image` — hanya dicatat saat operasi **berhasil**.
@@ -265,11 +266,11 @@ Semua endpoint (kecuali `health`, `auth`, dan `benchmark`) memerlukan header `Au
 
 | Metode | Path | Deskripsi |
 | :--- | :--- | :--- |
-| `POST` | `/patients/{patient_id}/files` | Multipart: `file`, `category`, `cipher` (`aes`\|`des`\|`rc4`) |
+| `POST` | `/patients/{patient_id}/files` | Multipart: `file`, `category`, `cipher` (`aes`\|`des`\|`rc4`), `pin` opsional (4–8 digit) |
 | `GET` | `/patients/{patient_id}/files?page&size&category` | Daftar berkas pasien |
-| `GET` | `/files/{file_id}` | Metadata berkas (tanpa akses storage) |
-| `GET` | `/files/{file_id}/download` | Unduh berkas asli (verifikasi + header keamanan) |
-| `POST` | `/files/{file_id}/share-image` | Citra klinis dengan identitas tersisip (stego) |
+| `GET` | `/files/{file_id}` | Metadata berkas (tanpa akses storage, termasuk `has_pin`) |
+| `GET` | `/files/{file_id}/download` | Unduh berkas asli (verifikasi + header keamanan; `X-File-PIN` bila `has_pin`) |
+| `POST` | `/files/{file_id}/share-image` | Citra klinis dengan identitas tersisip (`X-File-PIN` bila `has_pin`) |
 
 ### Aktivitas, Stego & Benchmark
 
@@ -284,6 +285,13 @@ Semua endpoint (kecuali `health`, `auth`, dan `benchmark`) memerlukan header `Au
 
 ```bash
 curl -s -OJ -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8000/files/<file_id>/download"
+```
+
+Berkas ber-PIN memakai header yang sama; PIN tidak pernah ditaruh di URL:
+
+```bash
+curl -s -OJ -H "Authorization: Bearer $TOKEN" -H "X-File-PIN: 123456" \
   "http://localhost:8000/files/<file_id>/download"
 ```
 

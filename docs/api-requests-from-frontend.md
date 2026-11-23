@@ -7,7 +7,7 @@ saran dari frontend, bukan spesifikasi yang sudah disepakati.
 
 - `GET /patients/{patient_id}/files?page&size&category`: daftar file pasien (SIA-111).
 - `GET /logs?page&size&action&date_from&date_to`: log aktivitas milik pengguna (SIA-134).
-- `GET /files/{id}/download` dan `POST /files/{id}/share-image`: unduh dan unduh untuk konsultasi.
+- `GET /files/{id}/download` dan `POST /files/{id}/share-image`: unduh dan unduh untuk konsultasi. Berkas ber-PIN memerlukan header `X-File-PIN`; PIN tidak dikirim lewat query string.
 
 ## Status endpoint tambahan
 

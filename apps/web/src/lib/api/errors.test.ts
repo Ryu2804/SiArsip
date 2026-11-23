@@ -14,6 +14,15 @@ describe("friendlyMessage", () => {
     expect(friendlyMessage(new ApiError(status, "x", "english"))).toContain(fragment);
   });
 
+  it("maps PIN error codes before the generic status", () => {
+    expect(friendlyMessage(new ApiError(403, "pin_required", "PIN required"))).toContain(
+      "dilindungi PIN",
+    );
+    expect(friendlyMessage(new ApiError(422, "invalid_pin", "Invalid PIN"))).toContain(
+      "PIN salah",
+    );
+  });
+
   it("hides server detail on 5xx", () => {
     const message = friendlyMessage(new ApiError(500, "boom", "stack trace here"));
     expect(message).not.toContain("stack trace");

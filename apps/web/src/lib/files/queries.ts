@@ -12,7 +12,7 @@ export const fileKeys = {
   byPatient: (patientId: string) => [...root, "patient", patientId] as const,
   list: (patientId: string, page: number, size: number, category?: FileCategory) =>
     [...fileKeys.byPatient(patientId), page, size, category ?? "all"] as const,
-  preview: (fileId: string) => [...root, "preview", fileId] as const,
+  preview: (fileId: string, attempt = 0) => [...root, "preview", fileId, attempt] as const,
 };
 
 export function usePatientFiles(

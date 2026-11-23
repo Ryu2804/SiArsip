@@ -23,14 +23,21 @@ from app.schemas.errors.common_error import (
     ConflictError,
     FileTooLargeError,
     IntegrityError,
+    InvalidPinError,
     NotFoundError,
     NotShareableError,
+    PinRequiredError,
     StorageError,
     UnsupportedFileTypeError,
 )
 from app.schemas.file import CIPHER_ALGORITHM, FileResponse, FileUploadRequest
 from app.services import file_crypto, media_validation, mime, storage
-from app.services.crypto.envelope import unwrap_key, wrap_key
+from app.services.crypto.envelope import (
+    unwrap_key,
+    unwrap_key_with_pin,
+    wrap_key,
+    wrap_key_with_pin,
+)
  
 from app.services import patient_service, stego
  
@@ -39,6 +46,11 @@ logger = logging.getLogger(__name__)
 FILE_NOT_FOUND = "File not found"
 INTEGRITY_MESSAGE = "File integrity check failed"
 CHUNK_SIZE = 1024 * 1024
+
+# files.format_version: 1 = DEK wrapped by the master key only;
+# 2 = DEK and MAC key also wrapped by a user-supplied PIN (scrypt + AES-GCM).
+FORMAT_VERSION_PLAIN = 1
+FORMAT_VERSION_PIN = 2
  
 # category -> (allowed MIME types, PDP class)
 CATEGORY_RULES: dict[FileCategory, tuple[set[str], PDPClass]] = {
@@ -71,6 +83,7 @@ def _as_response(row: Files) -> FileResponse:
         sha256=row.sha256_plain.hex(),
         algorithm=row.algorithm,
         shareable=row.category == FileCategory.CLINICAL_IMAGE,
+        has_pin=row.format_version == FORMAT_VERSION_PIN,
         created_at=row.created_at,
     )
  
@@ -102,13 +115,32 @@ async def _read_limited(upload, limit: int = MAX_FILE_BYTES) -> bytes:
     return b"".join(chunks)
  
  
-def _dek_and_mac(row: Files) -> tuple[bytes, bytes | None]:
+def _dek_and_mac(row: Files, pin: str | None = None) -> tuple[bytes, bytes | None]:
+    if row.format_version == FORMAT_VERSION_PIN:
+        if not pin:
+            raise PinRequiredError("PIN diperlukan untuk mendekripsi file ini")
+        try:
+            dek = unwrap_key_with_pin(row.dek_wrapped, pin)
+            mac_key = (
+                unwrap_key_with_pin(row.mac_key_wrapped, pin) if row.mac_key_wrapped else None
+            )
+        except InvalidPinError:
+            # Never log the PIN; the pair is enough to spot repeated attempts.
+            logger.warning(
+                "PIN verification failed for file %s (owner %s)", row.id, row.owner_id
+            )
+            raise
+        return dek, mac_key
+
+    if row.format_version != FORMAT_VERSION_PLAIN:
+        raise IntegrityError("Versi format file tidak didukung")
+
     dek = unwrap_key(row.dek_wrapped)
     mac_key = unwrap_key(row.mac_key_wrapped) if row.mac_key_wrapped else None
     return dek, mac_key
  
  
-def decrypt_verified(row: Files) -> bytes:
+def decrypt_verified(row: Files, pin: str | None = None) -> bytes:
     """Fetch the object, verify tag + SHA-256, and return the plaintext.
  
     Everything is checked before any byte is handed to the client.
@@ -119,7 +151,7 @@ def decrypt_verified(row: Files) -> bytes:
         logger.warning("Object missing for file %s (%s)", row.id, row.storage_key)
         raise NotFoundError(FILE_NOT_FOUND) from None
  
-    dek, mac_key = _dek_and_mac(row)
+    dek, mac_key = _dek_and_mac(row, pin=pin)
     aad = file_crypto.build_aad(row.owner_id, row.id)
  
     try:
@@ -172,6 +204,15 @@ async def upload(
     # Store first: a failure here must not leave a row behind.
     storage.put_object(storage_key, encrypted.blob)
  
+    if form.pin:
+        dek_wrapped = wrap_key_with_pin(dek, form.pin)
+        mac_key_wrapped = wrap_key_with_pin(mac_key, form.pin) if mac_key else None
+        format_version = FORMAT_VERSION_PIN
+    else:
+        dek_wrapped = wrap_key(dek)
+        mac_key_wrapped = wrap_key(mac_key) if mac_key else None
+        format_version = FORMAT_VERSION_PLAIN
+
     row = Files(
         id=file_id,
         # owner is copied from the patient, never from the client.
@@ -184,11 +225,11 @@ async def upload(
         original_name_encrypted=file_crypto.seal_name(upload_file.filename or "file"),
         sha256_plain=hashlib.sha256(content).digest(),
         algorithm=algorithm,
-        format_version=1,
+        format_version=format_version,
         iv=encrypted.iv,
         auth_tag=encrypted.tag,
-        dek_wrapped=wrap_key(dek),
-        mac_key_wrapped=wrap_key(mac_key) if mac_key else None,
+        dek_wrapped=dek_wrapped,
+        mac_key_wrapped=mac_key_wrapped,
         storage_key=storage_key,
     )
  
@@ -216,9 +257,9 @@ def get(db: Session, user: User, file_id: UUID) -> FileResponse:
     return _as_response(_owned_file(db, user, file_id))
  
  
-def download(db: Session, user: User, file_id: UUID) -> DownloadResult:
+def download(db: Session, user: User, file_id: UUID, pin: str | None = None) -> DownloadResult:
     row = _owned_file(db, user, file_id)
-    content = decrypt_verified(row)
+    content = decrypt_verified(row, pin=pin)
  
     activity_repository.record(
         db, action=ActivityAction.DOWNLOAD, user_id=user.id, file_id=row.id
@@ -238,7 +279,9 @@ def repr_digest(sha256: bytes) -> str:
     return f"sha-256=:{base64.b64encode(sha256).decode()}:"
  
  
-def share_image(db: Session, user: User, file_id: UUID) -> tuple[bytes, str]:
+def share_image(
+    db: Session, user: User, file_id: UUID, pin: str | None = None
+) -> tuple[bytes, str]:
     """Return the clinical image with the patient's identity hidden inside it."""
     row = _owned_file(db, user, file_id)          # 404 if missing or not yours
  
@@ -249,7 +292,7 @@ def share_image(db: Session, user: User, file_id: UUID) -> tuple[bytes, str]:
     patient = patient_service.get(db, user, row.patient_id)
  
     # Not download(): that would also write a DOWNLOAD entry to activity_logs.
-    plaintext = decrypt_verified(row)
+    plaintext = decrypt_verified(row, pin=pin)
  
     # Key material for the hidden identity: the id of the file's owner (the uploader).
     # It never changes, so it survives password changes.

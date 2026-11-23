@@ -37,6 +37,26 @@ class IntegrityError(AppError):
     code = "integrity_failed"
 
 
+class PinRequiredError(AppError):
+    """Raised when accessing a PIN-protected file without providing a PIN."""
+
+    status_code = 403
+    code = "pin_required"
+
+    def __init__(self, message: str = "PIN required to access this file") -> None:
+        super().__init__(message)
+
+
+class InvalidPinError(AppError):
+    """Raised when the provided PIN is incorrect."""
+
+    status_code = 422
+    code = "invalid_pin"
+
+    def __init__(self, message: str = "Invalid PIN: decryption failed") -> None:
+        super().__init__(message)
+
+
 class StorageError(AppError):
     """Raised when an object-storage operation fails or storage is unavailable."""
 

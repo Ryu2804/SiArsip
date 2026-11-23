@@ -95,6 +95,27 @@ def jpeg_bytes(size=(64, 64)) -> bytes:
     return buffer.getvalue()
 
 
+def noisy_jpeg_bytes(size=(128, 128)) -> bytes:
+    """JPEG with enough non-zero DCT coefficients for steganography.
+
+    Uses a sinusoidal pattern: high-frequency variation maximises non-zero DCT
+    coefficients without producing MZ bytes in the first 4 KiB (which would
+    trigger the executable-grafting check in media_validation).
+    """
+    import numpy as np
+
+    rows, cols = size
+    i_idx = np.arange(rows, dtype=float)[:, None]
+    j_idx = np.arange(cols, dtype=float)[None, :]
+    r = (128 + 60 * np.sin(2 * np.pi * i_idx / 8) * np.cos(2 * np.pi * j_idx / 8)).astype(np.uint8)
+    g = (128 + 60 * np.cos(2 * np.pi * i_idx / 4) * np.ones((1, cols))).astype(np.uint8)
+    b = (128 + 60 * np.sin(2 * np.pi * j_idx / 4) * np.ones((rows, 1))).astype(np.uint8)
+    arr = np.dstack([r, g, b])  # shape (rows, cols, 3)
+    buffer = io.BytesIO()
+    Image.fromarray(arr).save(buffer, format="JPEG", quality=85)
+    return buffer.getvalue()
+
+
 def png_bytes(size=(64, 64)) -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", size, (10, 200, 10)).save(buffer, format="PNG")
@@ -388,8 +409,9 @@ def test_metadata_does_not_touch_storage_or_leak_secrets(
 
     assert set(data) == {
         "id", "patient_id", "original_name", "category", "pdp_class",
-        "mime_type", "size_bytes", "sha256", "algorithm", "shareable", "created_at",
+        "mime_type", "size_bytes", "sha256", "algorithm", "shareable", "has_pin", "created_at",
     }
+    assert data["has_pin"] is False
     text = str(data)
     for secret in ("owner_id", "storage_key", "format_version", "dek_wrapped",
                    "mac_key_wrapped", "auth_tag", '"iv"'):
@@ -657,3 +679,157 @@ def test_list_empty_patient(client, alice, alice_patient):
 
 def test_list_requires_auth(client, alice_patient):
     assert client.get(LIST_URL.format(patient_id=alice_patient["id"])).status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# PIN-protected file tests
+# ---------------------------------------------------------------------------
+
+
+def test_upload_and_download_with_pin(client, bucket, alice, alice_patient):
+    raw_img = noisy_jpeg_bytes()  # sinusoidal pattern: safe from MZ check
+    # 1. Upload with 6-digit PIN
+    res = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": "aes", "pin": "123456"},
+        files={"file": ("rontgen.jpg", raw_img, "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res.status_code == 201
+    file_info = res.json()["data"]
+    assert file_info["has_pin"] is True
+    file_id = file_info["id"]
+
+    # 2. Metadata includes has_pin
+    meta = client.get(f"/files/{file_id}", headers=_auth(alice)).json()["data"]
+    assert meta["has_pin"] is True
+
+    # 3. Download without PIN fails with 403 pin_required
+    no_pin_res = client.get(f"/files/{file_id}/download", headers=_auth(alice))
+    assert no_pin_res.status_code == 403
+    assert no_pin_res.json()["error"]["code"] == "pin_required"
+
+    # 4. Download with wrong PIN fails with 422 invalid_pin
+    wrong_pin_res = client.get(
+        f"/files/{file_id}/download",
+        headers={**_auth(alice), "X-File-PIN": "999999"},
+    )
+    assert wrong_pin_res.status_code == 422
+    assert wrong_pin_res.json()["error"]["code"] == "invalid_pin"
+
+    # 5. Download with correct PIN via header succeeds
+    header_res = client.get(
+        f"/files/{file_id}/download",
+        headers={**_auth(alice), "X-File-PIN": "123456"},
+    )
+    assert header_res.status_code == 200
+    assert header_res.content == raw_img
+
+    # 6. A PIN in the query string is ignored: it must never end up in URLs or logs.
+    query_res = client.get(
+        f"/files/{file_id}/download?pin=123456",
+        headers=_auth(alice),
+    )
+    assert query_res.status_code == 403
+    assert query_res.json()["error"]["code"] == "pin_required"
+
+
+def test_share_image_with_pin(client, bucket, alice, alice_patient):
+    raw_img = noisy_jpeg_bytes()  # 128×128 sinusoidal: enough DCT capacity for the payload
+    res = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": "aes", "pin": "888888"},
+        files={"file": ("luka.jpg", raw_img, "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res.status_code == 201
+    file_id = res.json()["data"]["id"]
+
+    # Share without PIN -> 403
+    assert client.post(f"/files/{file_id}/share-image", headers=_auth(alice)).status_code == 403
+
+    # Share with wrong PIN -> 422
+    assert (
+        client.post(
+            f"/files/{file_id}/share-image",
+            headers={**_auth(alice), "X-File-PIN": "000000"},
+        ).status_code
+        == 422
+    )
+
+    # Share with correct PIN -> 200, returns stego image
+    shared_res = client.post(
+        f"/files/{file_id}/share-image",
+        headers={**_auth(alice), "X-File-PIN": "888888"},
+    )
+    assert shared_res.status_code == 200
+
+    # Reveal identity from shared image
+    reveal_res = client.post(
+        "/stego/reveal",
+        files={"file": ("shared.jpg", shared_res.content, "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert reveal_res.status_code == 200
+    assert reveal_res.json()["data"]["patient_id"] == alice_patient["id"]
+
+
+def test_invalid_pin_format_rejected(client, alice, alice_patient):
+    # Letters in PIN
+    res1 = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": "aes", "pin": "abcd"},
+        files={"file": ("img.jpg", jpeg_bytes(), "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res1.status_code == 422
+
+    # Too short (< 4 digits)
+    res2 = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": "aes", "pin": "123"},
+        files={"file": ("img.jpg", jpeg_bytes(), "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res2.status_code == 422
+
+    # Empty PIN is not an error: the file is simply not PIN-protected.
+    res3 = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": "aes", "pin": ""},
+        files={"file": ("img.jpg", jpeg_bytes(), "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res3.status_code == 201
+    assert res3.json()["data"]["has_pin"] is False
+
+
+@pytest.mark.parametrize("cipher", ["des", "rc4"])
+def test_pin_roundtrip_with_mac_ciphers(client, bucket, alice, alice_patient, cipher):
+    """DES-CBC and RC4 also wrap their separate MAC key with the PIN."""
+    raw_img = jpeg_bytes()
+    res = client.post(
+        UPLOAD_URL.format(patient_id=alice_patient["id"]),
+        data={"category": "clinical_image", "cipher": cipher, "pin": "4321"},
+        files={"file": ("rontgen.jpg", raw_img, "image/jpeg")},
+        headers=_auth(alice),
+    )
+    assert res.status_code == 201
+    file_id = res.json()["data"]["id"]
+
+    no_pin = client.get(f"/files/{file_id}/download", headers=_auth(alice))
+    assert no_pin.status_code == 403
+
+    wrong_pin = client.get(
+        f"/files/{file_id}/download",
+        headers={**_auth(alice), "X-File-PIN": "0000"},
+    )
+    assert wrong_pin.status_code == 422
+    assert wrong_pin.json()["error"]["code"] == "invalid_pin"
+
+    ok = client.get(
+        f"/files/{file_id}/download",
+        headers={**_auth(alice), "X-File-PIN": "4321"},
+    )
+    assert ok.status_code == 200
+    assert ok.content == raw_img

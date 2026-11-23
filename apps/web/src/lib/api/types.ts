@@ -107,6 +107,7 @@ export interface FileRecord {
   sha256: string;
   algorithm: CipherAlgorithm;
   shareable: boolean;
+  has_pin: boolean;
   created_at: string;
 }
 

@@ -18,6 +18,7 @@ export interface UploadInput {
   file: File;
   category: FileCategory;
   cipher: CipherChoice;
+  pin?: string;
 }
 
 export interface UploadOptions {
@@ -32,7 +33,7 @@ export interface UploadOptions {
  */
 export function uploadFile(
   patientId: string,
-  { file, category, cipher }: UploadInput,
+  { file, category, cipher, pin }: UploadInput,
   { onProgress, signal }: UploadOptions = {},
 ): Promise<FileRecord> {
   return new Promise<FileRecord>((resolve, reject) => {
@@ -72,6 +73,7 @@ export function uploadFile(
     const body = new FormData();
     body.append("category", category);
     body.append("cipher", cipher);
+    if (pin) body.append("pin", pin);
     body.append("file", file, file.name);
     xhr.send(body);
   });
@@ -102,10 +104,13 @@ async function fetchBlob(
   path: string,
   method: "GET" | "POST",
   signal?: AbortSignal,
+  pin?: string,
 ): Promise<Blob> {
   let response: Response;
+  const headers: Record<string, string> = { ...authHeaders() };
+  if (pin) headers["X-File-PIN"] = pin;
   try {
-    response = await fetch(buildUrl(path), { method, headers: authHeaders(), signal });
+    response = await fetch(buildUrl(path), { method, headers, signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new ApiError(0, "network_error", "Network request failed");
@@ -119,11 +124,11 @@ async function fetchBlob(
 }
 
 /** Decrypted file content. The Authorization header rules out a plain <a href>. */
-export function downloadFileBlob(fileId: string, signal?: AbortSignal): Promise<Blob> {
-  return fetchBlob(`/files/${fileId}/download`, "GET", signal);
+export function downloadFileBlob(fileId: string, signal?: AbortSignal, pin?: string): Promise<Blob> {
+  return fetchBlob(`/files/${fileId}/download`, "GET", signal, pin);
 }
 
 /** Image prepared for sharing (clinical images only): no patient identity inside. */
-export function shareImageBlob(fileId: string, signal?: AbortSignal): Promise<Blob> {
-  return fetchBlob(`/files/${fileId}/share-image`, "POST", signal);
+export function shareImageBlob(fileId: string, signal?: AbortSignal, pin?: string): Promise<Blob> {
+  return fetchBlob(`/files/${fileId}/share-image`, "POST", signal, pin);
 }

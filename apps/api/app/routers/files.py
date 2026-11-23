@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -60,7 +60,7 @@ async def upload_file(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    fields = FileUploadRequest(category=form.category, cipher=form.cipher)
+    fields = FileUploadRequest(category=form.category, cipher=form.cipher, pin=form.pin)
     return ok(
         await file_service.upload(db, user, patient_id, fields, file),
         message="File uploaded",
@@ -91,11 +91,12 @@ def get_file(
 @router.get("/files/{file_id}/download", response_class=Response)
 def download_file(
     file_id: UUID,
+    x_file_pin: Annotated[str | None, Header(alias="X-File-PIN")] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     # Every check happens inside the service, before a single byte is sent.
-    result = file_service.download(db, user, file_id)
+    result = file_service.download(db, user, file_id, pin=x_file_pin)
     return Response(
         content=result.content,
         media_type=result.mime_type,
@@ -110,10 +111,11 @@ def download_file(
 @router.post("/files/{file_id}/share-image", response_class=Response)
 def share_image(
     file_id: UUID,
+    x_file_pin: Annotated[str | None, Header(alias="X-File-PIN")] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    data, kind = file_service.share_image(db, user, file_id)
+    data, kind = file_service.share_image(db, user, file_id, pin=x_file_pin)
 
     media_type = "image/jpeg" if kind == "jpg" else "image/png"
     filename = f"shared_{file_id}.{kind}"  # no patient data in filenames

@@ -18,6 +18,12 @@ export class ApiError extends Error {
   }
 }
 
+// Codes win over status: a 403 for a PIN-protected file is not "no access".
+const CODE_MESSAGES: Record<string, string> = {
+  pin_required: "File ini dilindungi PIN. Masukkan PIN untuk membukanya.",
+  invalid_pin: "PIN salah. Periksa kembali lalu coba lagi.",
+};
+
 const STATUS_MESSAGES: Record<number, string> = {
   0: "Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.",
   401: "Sesi Anda berakhir. Silakan masuk kembali.",
@@ -33,6 +39,8 @@ const STATUS_MESSAGES: Record<number, string> = {
 /** Indonesian, user-facing text for any thrown value. */
 export function friendlyMessage(error: unknown): string {
   if (error instanceof ApiError) {
+    const coded = CODE_MESSAGES[error.code];
+    if (coded) return coded;
     const mapped = STATUS_MESSAGES[error.status];
     if (mapped) return mapped;
     if (error.status >= 500) {

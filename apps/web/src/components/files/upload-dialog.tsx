@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -27,6 +28,11 @@ import {
 import { uploadFile } from "@/lib/api/files";
 import type { CipherChoice, FileCategory, FileRecord } from "@/lib/api/types";
 import { CIPHERS, getCipherInfo } from "@/lib/ciphers";
+import {
+  PIN_MAX_LENGTH,
+  pinForRequest,
+  validateOptionalPin,
+} from "@/lib/files/pin";
 import { fileKeys } from "@/lib/files/queries";
 import {
   CATEGORIES,
@@ -90,6 +96,8 @@ function UploadForm({
   const [category, setCategory] = useState<FileCategory | null>(null);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [cipher, setCipher] = useState<CipherChoice>("aes");
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
   const [formError, setFormError] = useState<string | null>(null);
@@ -113,7 +121,9 @@ function UploadForm({
 
     if (!file) setFileError("Pilih file yang akan diunggah.");
     if (!category) setCategoryError("Pilih kategori file.");
-    if (!file || !category) return;
+    const pinProblem = validateOptionalPin(pin);
+    if (pinProblem) setPinError(pinProblem);
+    if (!file || !category || pinProblem) return;
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -123,7 +133,7 @@ function UploadForm({
     try {
       const record = await uploadFile(
         patientId,
-        { file, category, cipher },
+        { file, category, cipher, pin: pinForRequest(pin) },
         { onProgress: setProgress, signal: controller.signal },
       );
       await queryClient.invalidateQueries({ queryKey: fileKeys.byPatient(patientId) });
@@ -237,6 +247,35 @@ function UploadForm({
           {cipherInfo.recommended ? "" : "Peringatan: "}
           {cipherInfo.note}
         </p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${ids}-pin`}>PIN (opsional)</Label>
+        <Input
+          id={`${ids}-pin`}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={PIN_MAX_LENGTH}
+          placeholder="4–8 digit angka"
+          value={pin}
+          disabled={uploading}
+          aria-invalid={pinError ? true : undefined}
+          aria-describedby={`${ids}-pin-hint${pinError ? ` ${ids}-pin-error` : ""}`}
+          onChange={(event) => {
+            setPin(event.target.value);
+            setPinError(null);
+          }}
+        />
+        <p id={`${ids}-pin-hint`} className="text-muted-foreground text-xs">
+          Jika diisi, PIN diperlukan setiap kali file dibuka. PIN yang hilang tidak dapat
+          dipulihkan.
+        </p>
+        {pinError && (
+          <p id={`${ids}-pin-error`} className="text-destructive text-sm">
+            {pinError}
+          </p>
+        )}
       </div>
 
       {uploading && (

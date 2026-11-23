@@ -1,10 +1,12 @@
 "use client";
 
+import { LockIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { CipherBadge } from "@/components/cipher-badge";
 import { FilePreviewDialog } from "@/components/files/file-preview-dialog";
+import { PinPromptDialog } from "@/components/files/pin-prompt-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,10 +40,13 @@ const categoryItems = [
   ...CATEGORIES.map((c) => ({ value: c.value, label: c.label })),
 ];
 
+type PendingPin = { file: FileRecord; kind: "download" | "share" };
+
 export function FileList({ patientId, onUpload }: { patientId: string; onUpload: () => void }) {
   const [page, setPage] = useState(1);
   const [category, setCategory] = useState<FileCategory | typeof ALL>(ALL);
   const [previewing, setPreviewing] = useState<FileRecord | null>(null);
+  const [pinAction, setPinAction] = useState<PendingPin | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const { data, error, isPending, isFetching, refetch } = usePatientFiles(
@@ -65,16 +70,50 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
     }
   }
 
-  const download = (file: FileRecord) =>
-    run(file, async () => saveBlob(await downloadFileBlob(file.id), file.original_name));
+  async function saveFile(file: FileRecord, pin?: string) {
+    saveBlob(await downloadFileBlob(file.id, undefined, pin), file.original_name);
+  }
 
-  const downloadShared = (file: FileRecord) =>
-    run(file, async () => {
-      const blob = await shareImageBlob(file.id);
-      // Named by file id: the original name can carry patient identity.
-      saveBlob(blob, `konsultasi-${file.id}.${blob.type === "image/png" ? "png" : "jpg"}`);
-      toast.success("Gambar konsultasi diunduh. Identitas pasien tidak disertakan.");
-    });
+  async function saveSharedFile(file: FileRecord, pin?: string) {
+    const blob = await shareImageBlob(file.id, undefined, pin);
+    // Named by file id: the original name can carry patient identity.
+    saveBlob(blob, `konsultasi-${file.id}.${blob.type === "image/png" ? "png" : "jpg"}`);
+    toast.success("Gambar konsultasi diunduh. Identitas pasien tidak disertakan.");
+  }
+
+  const download = (file: FileRecord) => run(file, () => saveFile(file));
+
+  const downloadShared = (file: FileRecord) => run(file, () => saveSharedFile(file));
+
+  function requestDownload(file: FileRecord) {
+    if (file.has_pin) {
+      setPinAction({ file, kind: "download" });
+      return;
+    }
+    void download(file);
+  }
+
+  function requestShared(file: FileRecord) {
+    if (file.has_pin) {
+      setPinAction({ file, kind: "share" });
+      return;
+    }
+    void downloadShared(file);
+  }
+
+  // Errors propagate to PinPromptDialog so a wrong PIN keeps the dialog open.
+  async function submitPin(pin: string) {
+    const action = pinAction;
+    if (!action) return;
+    setBusyId(action.file.id);
+    try {
+      if (action.kind === "download") await saveFile(action.file, pin);
+      else await saveSharedFile(action.file, pin);
+    } finally {
+      setBusyId(null);
+    }
+    setPinAction(null);
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -145,8 +184,15 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
                   const busy = busyId === file.id;
                   return (
                     <TableRow key={file.id}>
-                      <TableCell className="max-w-64 truncate font-medium" title={file.original_name}>
-                        {file.original_name}
+                      <TableCell className="max-w-64 font-medium" title={file.original_name}>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">{file.original_name}</span>
+                          {file.has_pin && (
+                            <Badge variant="outline" className="shrink-0">
+                              <LockIcon /> PIN
+                            </Badge>
+                          )}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className="flex flex-col items-start gap-1">
@@ -178,7 +224,7 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
                             variant="outline"
                             size="sm"
                             disabled={busy}
-                            onClick={() => download(file)}
+                            onClick={() => requestDownload(file)}
                             aria-label={`Unduh ${file.original_name}`}
                           >
                             {busy ? "Memproses…" : "Unduh"}
@@ -188,7 +234,7 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
                               variant="secondary"
                               size="sm"
                               disabled={busy}
-                              onClick={() => downloadShared(file)}
+                              onClick={() => requestShared(file)}
                               aria-label={`Unduh untuk konsultasi: ${file.original_name}`}
                             >
                               Unduh untuk konsultasi
@@ -232,6 +278,21 @@ export function FileList({ patientId, onUpload }: { patientId: string; onUpload:
         onOpenChange={(open) => {
           if (!open) setPreviewing(null);
         }}
+      />
+
+      <PinPromptDialog
+        open={pinAction !== null}
+        title={pinAction?.kind === "share" ? "Unduh untuk konsultasi" : "Unduh file"}
+        description={
+          pinAction
+            ? `File “${pinAction.file.original_name}” dilindungi PIN. Masukkan PIN untuk mendekripsinya.`
+            : ""
+        }
+        submitLabel={pinAction?.kind === "share" ? "Unduh gambar" : "Unduh"}
+        onOpenChange={(open) => {
+          if (!open) setPinAction(null);
+        }}
+        onSubmit={submitPin}
       />
     </div>
   );
